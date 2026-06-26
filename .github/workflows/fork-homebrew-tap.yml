@@ -1,0 +1,104 @@
+name: Update Homebrew tap (fork)
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.47.1)'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  update-tap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p binaries
+          for target in darwin-arm64 darwin-x64 linux-arm64 linux-x64-baseline; do
+            name="backlog-bun-${target}"
+            gh release download "${TAG}" \
+              --repo mosugi/Backlog.md \
+              --pattern "${name}" \
+              --dir binaries
+          done
+      - name: Generate formula and push to tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+
+          DARWIN_ARM64_SHA=$(sha256sum binaries/backlog-bun-darwin-arm64 | awk '{print $1}')
+          DARWIN_X64_SHA=$(sha256sum binaries/backlog-bun-darwin-x64 | awk '{print $1}')
+          LINUX_ARM64_SHA=$(sha256sum binaries/backlog-bun-linux-arm64 | awk '{print $1}')
+          LINUX_X64_SHA=$(sha256sum binaries/backlog-bun-linux-x64-baseline | awk '{print $1}')
+
+          FORMULA=$(cat <<RUBY
+class BacklogMd < Formula
+  desc "Markdown-native Task Manager & Kanban visualizer for any Git repository"
+  homepage "https://github.com/mosugi/Backlog.md"
+  version "${VERSION}"
+  license "MIT"
+
+  on_macos do
+    if Hardware::CPU.arm?
+      url "https://github.com/mosugi/Backlog.md/releases/download/${TAG}/backlog-bun-darwin-arm64"
+      sha256 "${DARWIN_ARM64_SHA}"
+    else
+      url "https://github.com/mosugi/Backlog.md/releases/download/${TAG}/backlog-bun-darwin-x64"
+      sha256 "${DARWIN_X64_SHA}"
+    end
+  end
+
+  on_linux do
+    if Hardware::CPU.arm?
+      url "https://github.com/mosugi/Backlog.md/releases/download/${TAG}/backlog-bun-linux-arm64"
+      sha256 "${LINUX_ARM64_SHA}"
+    else
+      url "https://github.com/mosugi/Backlog.md/releases/download/${TAG}/backlog-bun-linux-x64-baseline"
+      sha256 "${LINUX_X64_SHA}"
+    end
+  end
+
+  def install
+    binary = if OS.mac?
+      Hardware::CPU.arm? ? "backlog-bun-darwin-arm64" : "backlog-bun-darwin-x64"
+    else
+      Hardware::CPU.arm? ? "backlog-bun-linux-arm64" : "backlog-bun-linux-x64-baseline"
+    end
+    bin.install binary => "backlog"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/backlog --version")
+  end
+end
+RUBY
+)
+
+          CURRENT_SHA=$(gh api "repos/mosugi/homebrew-tap/contents/Formula/backlog-md.rb" \
+            --jq '.sha' 2>/dev/null || echo "")
+
+          PAYLOAD=$(jq -n \
+            --arg message "Update backlog-md to ${TAG}" \
+            --arg content "$(printf '%s' "$FORMULA" | base64 -w 0)" \
+            --arg sha "$CURRENT_SHA" \
+            'if $sha != "" then {message: $message, content: $content, sha: $sha} else {message: $message, content: $content} end')
+
+          gh api "repos/mosugi/homebrew-tap/contents/Formula/backlog-md.rb" \
+            --method PUT \
+            --input - <<< "$PAYLOAD"
+
+          echo "Formula updated in mosugi/homebrew-tap for ${TAG}"
