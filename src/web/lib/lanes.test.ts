@@ -27,7 +27,7 @@ describe("buildLanes", () => {
 			makeTask({ id: "task-3" }),
 		];
 		const lanes = buildLanes("milestone", tasks, ["M1"]);
-		expect(lanes.map((lane) => lane.label)).toEqual(["No milestone", "M1", "Extra"]);
+		expect(lanes.map((lane) => lane.label)).toEqual(["No milestone", "Extra", "M1"]);
 	});
 
 	it("falls back to a single lane when mode is none", () => {

@@ -184,7 +184,10 @@ export function buildLanes(
 		addMilestone(task.milestone ?? "");
 	});
 
-	const laneMilestones = Array.from(milestonesByKey.values());
+	const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+	const laneMilestones = Array.from(milestonesByKey.values()).sort((a, b) =>
+		collator.compare(getMilestoneLabel(a, milestoneEntities), getMilestoneLabel(b, milestoneEntities)),
+	);
 
 	return [
 		{

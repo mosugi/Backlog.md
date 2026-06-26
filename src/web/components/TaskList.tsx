@@ -252,9 +252,12 @@ const TaskList: React.FC<TaskListProps> = ({
 		[tasks, availableLabels],
 	);
 	const milestoneOptions = useMemo(() => {
+		const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
 		const uniqueMilestones = Array.from(new Set([...availableMilestones.map((m) => m.trim()).filter(Boolean)]));
-		return uniqueMilestones;
-	}, [availableMilestones]);
+		return uniqueMilestones.sort((a, b) =>
+			collator.compare(getMilestoneLabel(a, milestoneEntities), getMilestoneLabel(b, milestoneEntities)),
+		);
+	}, [availableMilestones, milestoneEntities]);
 	const hasActiveFilters = Boolean(
 		statusFilter || priorityFilter || labelFilter.length > 0 || milestoneFilter,
 	);

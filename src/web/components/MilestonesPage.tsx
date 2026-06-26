@@ -135,28 +135,20 @@ const MilestonesPage: React.FC<MilestonesPageProps> = ({
 		});
 	}, [buckets, isSearchActive, searchQueryTrimmed, statuses]);
 
-	// Separate buckets into categories and sort by ID descending
+	// Separate buckets into categories and sort by name ascending
 	const { unassignedBucket, activeMilestones, completedMilestones } = useMemo(() => {
-		// Sort milestones by ID descending (newest first - IDs are sequential m-0, m-1, etc.)
-		const sortByIdDesc = (a: MilestoneBucket, b: MilestoneBucket) => {
-			const aMilestone = a.milestone ?? "";
-			const bMilestone = b.milestone ?? "";
-			const aMatch = aMilestone.match(/^m-(\d+)/);
-			const bMatch = bMilestone.match(/^m-(\d+)/);
-			const aNum = aMatch?.[1] ? Number.parseInt(aMatch[1], 10) : -1;
-			const bNum = bMatch?.[1] ? Number.parseInt(bMatch[1], 10) : -1;
-			return bNum - aNum;
-		};
+		const collator = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
+		const sortByName = (a: MilestoneBucket, b: MilestoneBucket) => collator.compare(a.label, b.label);
 
 		const unassigned = visibleBuckets.find((b) => b.isNoMilestone);
 		const activeWithTasks = visibleBuckets.filter((b) => !b.isNoMilestone && !b.isCompleted && b.total > 0);
 		const empty = visibleBuckets.filter((b) => !b.isNoMilestone && !b.isCompleted && b.total === 0);
 		const completed = visibleBuckets.filter((b) => !b.isNoMilestone && b.isCompleted);
 
-		// Sort each group by ID descending, then combine (active with tasks first, then empty)
-		const sortedActive = [...activeWithTasks].sort(sortByIdDesc);
-		const sortedEmpty = [...empty].sort(sortByIdDesc);
-		const sortedCompleted = [...completed].sort(sortByIdDesc);
+		// Sort each group by name ascending, then combine (active with tasks first, then empty)
+		const sortedActive = [...activeWithTasks].sort(sortByName);
+		const sortedEmpty = [...empty].sort(sortByName);
+		const sortedCompleted = [...completed].sort(sortByName);
 
 		return {
 			unassignedBucket: unassigned,
