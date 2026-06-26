@@ -233,7 +233,7 @@ describe("Web milestones page search", () => {
 		expect(container.textContent).toContain("Edit milestone");
 		const input = container.querySelector("#edit-milestone-name") as HTMLInputElement | null;
 		expect(input).toBeTruthy();
-		expect(input?.value).toBe("Release 2");
+		expect(input?.value).toBe("Release 1");
 	});
 
 	it("opens a remove confirmation with clear and reassign choices", () => {
@@ -252,7 +252,7 @@ describe("Web milestones page search", () => {
 
 		const select = container.querySelector("select") as HTMLSelectElement | null;
 		expect(select).toBeTruthy();
-		expect(Array.from(select?.options ?? []).map((option) => option.value)).toContain("m-1");
+		expect(Array.from(select?.options ?? []).map((option) => option.value)).toContain("m-2");
 	});
 
 	it("submits milestone edits through the API and refreshes data", async () => {
@@ -278,7 +278,7 @@ describe("Web milestones page search", () => {
 		setInputValue(input as HTMLInputElement, "Release 2.1");
 		await submitForm(input?.closest("form") as HTMLFormElement);
 
-		expect(updateArgs?.[0]).toBe("m-2");
+		expect(updateArgs?.[0]).toBe("m-1");
 		expect(updateArgs?.[1]).toBe("Release 2.1");
 		expect(refreshCount).toBe(1);
 	});
@@ -311,7 +311,7 @@ describe("Web milestones page search", () => {
 		expect(select).toBeTruthy();
 		act(() => {
 			if (select) {
-				select.value = "m-1";
+				select.value = "m-2";
 				select.dispatchEvent(new window.Event("change", { bubbles: true }));
 			}
 		});
@@ -321,8 +321,8 @@ describe("Web milestones page search", () => {
 		expect(submitButton).toBeTruthy();
 		await clickElementAsync(submitButton as HTMLButtonElement);
 
-		expect(removeArgs?.[0]).toBe("m-2");
-		expect(removeArgs?.[1]).toEqual({ taskHandling: "reassign", reassignTo: "m-1" });
+		expect(removeArgs?.[0]).toBe("m-1");
+		expect(removeArgs?.[1]).toEqual({ taskHandling: "reassign", reassignTo: "m-2" });
 		expect(refreshCount).toBe(1);
 	});
 
